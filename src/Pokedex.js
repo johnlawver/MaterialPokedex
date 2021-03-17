@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -7,9 +7,11 @@ import {
   CardContent,
   CircularProgress,
   CardMedia,
+  TextField,
 } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
-import mockData from "./mockData";
+import { firstCharUppercase } from "./constants";
+import axios from "axios";
 
 const useStyles = makeStyles({
   pokedexContianer: {
@@ -23,29 +25,61 @@ const useStyles = makeStyles({
   cardContent: {
     textAlign: "center",
   },
+  searchContainer: {
+    display: "flex",
+    paddingRight: "20px",
+    marginTop: "10px",
+    marginBottom: "5px",
+  },
 });
-
-const firstCharUppercase = (name) =>
-  name.charAt(0).toUpperCase() + name.slice(1);
 
 const Pokedex = (props) => {
   const { history } = props;
-  const { pokedexContianer, cardMedia, cardContent } = useStyles();
-  const [pokemonData, setPokemonData] = useState(mockData);
+  const {
+    pokedexContianer,
+    cardMedia,
+    cardContent,
+    searchContainer,
+  } = useStyles();
+  const [pokemonData, setPokemonData] = useState({});
+  const [filter, setFilter] = useState("");
+
+  const handleSearchChange = (e) => {
+    setFilter(e.target.value);
+  };
+
+  useEffect(() => {
+    axios
+      .get(`https://pokeapi.co/api/v2/pokemon?limit=807`)
+      .then(function (response) {
+        const { data } = response;
+        const { results } = data;
+        const newPokemonData = {};
+        results.forEach((pokemon, index) => {
+          newPokemonData[index + 1] = {
+            id: index + 1,
+            name: pokemon.name,
+            sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${
+              index + 1
+            }.png`,
+          };
+        });
+        setPokemonData(newPokemonData);
+      });
+  }, []);
 
   const getPokemonCard = (pokemonID) => {
-    console.log(pokemonData[`${pokemonID}`]);
-    const { name, sprites, id } = pokemonData[`${pokemonID}`];
+    const { name, sprite, id } = pokemonData[pokemonID];
     return (
-      <Grid item xs={12} sm={4} key={pokemonID}>
+      <Grid item xs={12} sm={4} lg={3} key={id}>
         <Card
           onClick={() => {
-            history.push(`/${pokemonID}`);
+            history.push(`/${id}`);
           }}
         >
           <CardMedia
             className={cardMedia}
-            image={sprites.front_default}
+            image={sprite}
             style={{ width: "130px", height: "130px" }}
           />
           <CardContent className={cardContent}>{`${id}. ${firstCharUppercase(
@@ -59,12 +93,24 @@ const Pokedex = (props) => {
   return (
     <>
       <AppBar position="static">
-        <Toolbar>This is for sure a nav bar</Toolbar>
+        <Toolbar>
+          <div>
+            <TextField
+              onChange={handleSearchChange}
+              className={searchContainer}
+              label="Pokemon"
+              variant="outlined"
+              color="secondary"
+            />
+          </div>
+        </Toolbar>
       </AppBar>
       {pokemonData ? (
         <Grid container spacing={2} className={pokedexContianer}>
-          {Object.keys(pokemonData).map((pokemonID) =>
-            getPokemonCard(pokemonID)
+          {Object.keys(pokemonData).map(
+            (pokemonID) =>
+              pokemonData[pokemonID].name.includes(filter) &&
+              getPokemonCard(pokemonID)
           )}
         </Grid>
       ) : (
